@@ -1,11 +1,18 @@
 <?php
+session_start();
 require_once "ssl_check.php";
 require_once "header_check.php";
+require_once "config.php";
 
-// TODO: replace with the real logged-in user's ID once auth (F-01) is built
-$PLACEHOLDER_USER_ID = 1;
+// redirect to login if nobody's signed in
+if (!isset($_SESSION["user_id"])) {
+    header("Location: login.php");
+    exit;
+}
 
-$conn = new mysqli("localhost", "seccheck_user", "20051021b", "seccheck_db");
+$currentUserId = $_SESSION["user_id"];
+
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if ($conn->connect_error) {
     die("Database connection failed: " . $conn->connect_error);
 }
@@ -49,7 +56,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
         );
         $stmt->bind_param(
             "isiiiss",
-            $PLACEHOLDER_USER_ID,
+            $currentUserId,
             $host,
             $sslScore,
             $headerScore,

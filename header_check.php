@@ -1,30 +1,35 @@
 <?php
-
 function checkHeaders($url) {
-    // make sure the URL has a scheme, otherwise get_headers() fails silently
     if (!preg_match("~^https?://~i", $url)) {
         $url = "https://" . $url;
     }
 
-    $headers = @get_headers($url, 1);
+    // set a timeout so a slow/unresponsive site doesn't hang the page
+    $context = stream_context_create([
+        "http" => ["timeout" => 10],
+        "ssl" => ["timeout" => 10],
+    ]);
+
+    $headers = @get_headers($url, 1, $context);
 
     if ($headers === false) {
-        return ["error" => "Could not fetch headers. Is the host reachable?"];
+        return [
+            "error" => "Could not fetch headers for $url. Host may be unreachable.",
+            "score" => 0,
+            "checks" => [],
+        ];
     }
 
-    // get_headers() returns keys inconsistently cased depending on the server,
-    // so normalize everything to lowercase for reliable checks
     $normalized = [];
     foreach ($headers as $key => $value) {
         if (is_int($key)) {
-            continue; // skip the raw "HTTP/1.1 200 OK" status line entry
+            continue;
         }
         $normalized[strtolower($key)] = $value;
     }
 
     return scoreHeaders($normalized);
 }
-
 function scoreHeaders($headers) {
     $result = [
         "checks" => [],

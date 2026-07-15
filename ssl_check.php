@@ -7,15 +7,29 @@ function checkSSL($url) {
     }
 
     $safeHost = escapeshellarg($host);
-    $output = shell_exec("sslscan --no-colour $safeHost 2>&1");
+    // timeout kills the whole command after 15s, --connect-timeout caps the connection attempt itself
+    $output = shell_exec("timeout 15 sslscan --no-colour --connect-timeout=10 $safeHost 2>&1");
 
-    if (!$output) {
-        return ["error" => "sslscan produced no output. Is the host reachable?"];
+    if (!$output || trim($output) === "") {
+        return [
+            "error" => "Could not reach $host or sslscan produced no output.",
+            "score" => 0,
+            "checks" => [],
+        ];
+    }
+
+    if (stripos($output, "connection refused") !== false ||
+        stripos($output, "could not resolve") !== false ||
+        stripos($output, "connection timed out") !== false) {
+        return [
+            "error" => "Could not connect to $host: host may be unreachable or invalid.",
+            "score" => 0,
+            "checks" => [],
+        ];
     }
 
     return parseSSLScanOutput($output);
 }
-
 function parseSSLScanOutput($output) {
     $result = [
         "raw" => $output,

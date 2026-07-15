@@ -2,14 +2,8 @@
 session_start();
 require_once "ssl_check.php";
 require_once "header_check.php";
-require_once "config.php";
-
-// redirect to login if nobody's signed in
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php");
-    exit;
-}
-
+require_once "db.php";
+$conn = getDbConnection();
 $currentUserId = $_SESSION["user_id"];
 
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);

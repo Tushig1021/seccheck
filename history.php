@@ -1,12 +1,7 @@
 <?php
 session_start();
-require_once "config.php";
-
-if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php");
-    exit;
-}
-
+require_once "db.php";
+$conn = getDbConnection();
 $currentUserId = $_SESSION["user_id"];
 
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);

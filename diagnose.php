@@ -1,0 +1,83 @@
+<?php
+require_once "ssl_check.php";
+require_once "header_check.php";
+
+$result = null;
+$submittedUrl = "";
+
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
+    $submittedUrl = trim($_POST["url"]);
+
+    // basic validation - must look like a real host, not blank/garbage input
+    $host = parse_url(
+        preg_match("~^https?://~i", $submittedUrl) ? $submittedUrl : "https://" . $submittedUrl,
+        PHP_URL_HOST
+    );
+
+    if (!$host) {
+        $result = ["error" => "That doesn't look like a valid URL."];
+    } else {
+        $sslResult = checkSSL($host);
+        $headerResult = checkHeaders($host);
+
+        $sslScore = $sslResult["score"] ?? 0;
+        $headerScore = $headerResult["score"] ?? 0;
+        $totalScore = round(($sslScore + $headerScore) / 2);
+
+        $result = [
+            "host" => $host,
+            "ssl" => $sslResult,
+            "headers" => $headerResult,
+            "total_score" => $totalScore,
+        ];
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>SecCheck - Website Security Diagnosis</title>
+</head>
+<body>
+    <h1>SecCheck</h1>
+
+    <form method="POST" action="diagnose.php">
+        <label for="url">Website URL:</label>
+        <input type="text" id="url" name="url" placeholder="example.com"
+               value="<?= htmlspecialchars($submittedUrl) ?>" required>
+        <button type="submit">Diagnose</button>
+    </form>
+
+    <?php if ($result): ?>
+        <?php if (isset($result["error"])): ?>
+            <p style="color:red;"><?= htmlspecialchars($result["error"]) ?></p>
+        <?php else: ?>
+            <h2>Results for <?= htmlspecialchars($result["host"]) ?></h2>
+            <h3>Total Score: <?= htmlspecialchars($result["total_score"]) ?> / 100</h3>
+
+            <h4>SSL/TLS (<?= htmlspecialchars($result["ssl"]["score"] ?? "N/A") ?> / 100)</h4>
+            <ul>
+                <?php foreach (($result["ssl"]["checks"] ?? []) as $name => $check): ?>
+                    <li>
+                        <strong><?= htmlspecialchars($name) ?>:</strong>
+                        <?= $check["pass"] ? "PASS" : "FAIL" ?>
+                        - <?= htmlspecialchars($check["detail"]) ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+
+            <h4>HTTP Headers (<?= htmlspecialchars($result["headers"]["score"] ?? "N/A") ?> / 100)</h4>
+            <ul>
+                <?php foreach (($result["headers"]["checks"] ?? []) as $name => $check): ?>
+                    <li>
+                        <strong><?= htmlspecialchars($name) ?>:</strong>
+                        <?= $check["pass"] ? "PASS" : "FAIL" ?>
+                        - <?= htmlspecialchars($check["detail"]) ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    <?php endif; ?>
+</body>
+</html>

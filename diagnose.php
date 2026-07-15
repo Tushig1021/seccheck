@@ -2,6 +2,14 @@
 require_once "ssl_check.php";
 require_once "header_check.php";
 
+// TODO: replace with the real logged-in user's ID once auth (F-01) is built
+$PLACEHOLDER_USER_ID = 1;
+
+$conn = new mysqli("localhost", "seccheck_user", "20051021b", "seccheck_db");
+if ($conn->connect_error) {
+    die("Database connection failed: " . $conn->connect_error);
+}
+
 $result = null;
 $submittedUrl = "";
 
@@ -30,6 +38,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
             "headers" => $headerResult,
             "total_score" => $totalScore,
         ];
+
+        // save this diagnosis to the database
+        $sslDetailsJson = json_encode($sslResult["checks"] ?? []);
+        $headerDetailsJson = json_encode($headerResult["checks"] ?? []);
+
+        $stmt = $conn->prepare(
+            "INSERT INTO diagnoses (user_id, url, ssl_score, header_score, total_score, ssl_details, header_details)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        );
+        $stmt->bind_param(
+            "isiiiss",
+            $PLACEHOLDER_USER_ID,
+            $host,
+            $sslScore,
+            $headerScore,
+            $totalScore,
+            $sslDetailsJson,
+            $headerDetailsJson
+        );
+
+        if (!$stmt->execute()) {
+            $result["save_error"] = "Could not save to database: " . $stmt->error;
+        }
+        $stmt->close();
     }
 }
 ?>
@@ -55,6 +87,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
         <?php else: ?>
             <h2>Results for <?= htmlspecialchars($result["host"]) ?></h2>
             <h3>Total Score: <?= htmlspecialchars($result["total_score"]) ?> / 100</h3>
+
+            <?php if (isset($result["save_error"])): ?>
+                <p style="color:red;"><?= htmlspecialchars($result["save_error"]) ?></p>
+            <?php else: ?>
+                <p style="color:green;">Saved to history.</p>
+            <?php endif; ?>
 
             <h4>SSL/TLS (<?= htmlspecialchars($result["ssl"]["score"] ?? "N/A") ?> / 100)</h4>
             <ul>

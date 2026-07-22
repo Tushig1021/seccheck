@@ -1,4 +1,5 @@
 <?php
+require_once "session_init.php";
 require_once "db.php";
 $conn = getDbConnection();
 
@@ -38,18 +39,19 @@ if ($token === "") {
         $message = "Your email has been verified! You can now log in.";
     }
 }
+
+$pageTitle = "Verify Email";
+require_once "includes/header.php";
 ?>
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>SecCheck - Email Verification</title>
-</head>
-<body>
-    <h1>Email Verification</h1>
-    <p style="color:<?= $success ? "green" : "red" ?>;"><?= htmlspecialchars($message) ?></p>
-    <?php if ($success): ?>
-        <p><a href="login.php">Go to login</a></p>
-    <?php endif; ?>
-</body>
-</html>
+
+<h1>verify_email</h1>
+
+<div class="alert <?= $success ? "alert-success" : "alert-error" ?>">
+    <?= htmlspecialchars($message) ?>
+</div>
+
+<?php if ($success): ?>
+    <p><a href="login.php">go to login</a></p>
+<?php endif; ?>
+
+<?php require_once "includes/footer.php"; ?>

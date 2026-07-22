@@ -47,90 +47,95 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
         if ($bothFailed) {
             $result["save_error"] = "Host unreachable — not saved to history.";
         } else {
-        $sslDetailsJson = json_encode($sslResult["checks"] ?? []);
-        $headerDetailsJson = json_encode($headerResult["checks"] ?? []);
+            $sslDetailsJson = json_encode($sslResult["checks"] ?? []);
+            $headerDetailsJson = json_encode($headerResult["checks"] ?? []);
 
-        $stmt = $conn->prepare(
-            "INSERT INTO diagnoses (user_id, url, ssl_score, header_score, total_score, ssl_details, header_details)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
-        );
-        $stmt->bind_param(
-            "isiiiss",
-            $currentUserId,
-            $host,
-            $sslScore,
-            $headerScore,
-            $totalScore,
-            $sslDetailsJson,
-            $headerDetailsJson
-        );
+            $stmt = $conn->prepare(
+                "INSERT INTO diagnoses (user_id, url, ssl_score, header_score, total_score, ssl_details, header_details)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+            );
+            $stmt->bind_param(
+                "isiiiss",
+                $currentUserId,
+                $host,
+                $sslScore,
+                $headerScore,
+                $totalScore,
+                $sslDetailsJson,
+                $headerDetailsJson
+            );
 
-        if (!$stmt->execute()) {
-            $result["save_error"] = "Could not save to database: " . $stmt->error;
-        }
-        $stmt->close();
+            if (!$stmt->execute()) {
+                $result["save_error"] = "Could not save to database: " . $stmt->error;
+            }
+            $stmt->close();
         }
     }
 }
+
+// pick a score badge color class based on the total
+function scoreClass($score) {
+    if ($score >= 80) return "good";
+    if ($score >= 50) return "mid";
+    return "bad";
+}
+
+$pageTitle = "Diagnose";
+require_once "includes/header.php";
 ?>
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>SecCheck - Website Security Diagnosis</title>
-</head>
-<body>
-    <h1>SecCheck</h1>
 
-    <form method="POST" action="diagnose.php">
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-        <label for="url">Website URL:</label>
-        <input type="text" id="url" name="url" placeholder="example.com"
-               value="<?= htmlspecialchars($submittedUrl) ?>" required>
-        <button type="submit">Diagnose</button>
-    </form>
+<h1>diagnose</h1>
 
-    <?php if ($result): ?>
-        <?php if (isset($result["error"])): ?>
-            <p style="color:red;"><?= htmlspecialchars($result["error"]) ?></p>
+<form method="POST" action="diagnose.php">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+    <label for="url">target_url</label>
+    <input type="text" id="url" name="url" placeholder="example.com"
+           value="<?= htmlspecialchars($submittedUrl) ?>" required>
+    <button type="submit">run_scan</button>
+</form>
+
+<?php if ($result): ?>
+    <?php if (isset($result["error"])): ?>
+        <div class="alert alert-error"><?= htmlspecialchars($result["error"]) ?></div>
+    <?php else: ?>
+        <h2 style="margin-top:32px;"><?= htmlspecialchars($result["host"]) ?></h2>
+
+        <div class="score-badge <?= scoreClass($result["total_score"]) ?> cursor">
+            <?= htmlspecialchars($result["total_score"]) ?>/100
+        </div>
+
+        <?php if (isset($result["save_error"])): ?>
+            <div class="alert alert-error" style="margin-top:16px;"><?= htmlspecialchars($result["save_error"]) ?></div>
         <?php else: ?>
-            <h2>Results for <?= htmlspecialchars($result["host"]) ?></h2>
-            <h3>Total Score: <?= htmlspecialchars($result["total_score"]) ?> / 100</h3>
-
-            <?php if (isset($result["save_error"])): ?>
-                <p style="color:red;"><?= htmlspecialchars($result["save_error"]) ?></p>
-            <?php else: ?>
-                <p style="color:green;">Saved to history.</p>
-            <?php endif; ?>
-
-            <h4>SSL/TLS (<?= htmlspecialchars($result["ssl"]["score"] ?? "N/A") ?> / 100)</h4>
-            <?php if (isset($result["ssl"]["error"])): ?>
-                <p style="color:red;"><?= htmlspecialchars($result["ssl"]["error"]) ?></p>
-            <?php endif; ?>
-            <ul>
-                <?php foreach (($result["ssl"]["checks"] ?? []) as $name => $check): ?>
-                    <li>
-                        <strong><?= htmlspecialchars($name) ?>:</strong>
-                        <?= $check["pass"] ? "PASS" : "FAIL" ?>
-                        - <?= htmlspecialchars($check["detail"]) ?>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-
-            <h4>HTTP Headers (<?= htmlspecialchars($result["headers"]["score"] ?? "N/A") ?> / 100)</h4>
-            <?php if (isset($result["headers"]["error"])): ?>
-                <p style="color:red;"><?= htmlspecialchars($result["headers"]["error"]) ?></p>
-            <?php endif; ?>
-            <ul>
-                <?php foreach (($result["headers"]["checks"] ?? []) as $name => $check): ?>
-                    <li>
-                        <strong><?= htmlspecialchars($name) ?>:</strong>
-                        <?= $check["pass"] ? "PASS" : "FAIL" ?>
-                        - <?= htmlspecialchars($check["detail"]) ?>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
+            <div class="alert alert-success" style="margin-top:16px;">saved to history</div>
         <?php endif; ?>
+
+        <h3 style="margin-top:28px;">ssl/tls — <?= htmlspecialchars($result["ssl"]["score"] ?? "n/a") ?>/100</h3>
+        <?php if (isset($result["ssl"]["error"])): ?>
+            <div class="alert alert-error"><?= htmlspecialchars($result["ssl"]["error"]) ?></div>
+        <?php endif; ?>
+        <?php foreach (($result["ssl"]["checks"] ?? []) as $name => $check): ?>
+            <div class="report-line">
+                <span class="tag <?= $check["pass"] ? "tag-pass" : "tag-fail" ?>">
+                    [<?= $check["pass"] ? "PASS" : "FAIL" ?>]
+                </span>
+                <span><strong><?= htmlspecialchars($name) ?>:</strong> <?= htmlspecialchars($check["detail"]) ?></span>
+            </div>
+        <?php endforeach; ?>
+
+        <h3 style="margin-top:28px;">http headers — <?= htmlspecialchars($result["headers"]["score"] ?? "n/a") ?>/100</h3>
+        <?php if (isset($result["headers"]["error"])): ?>
+            <div class="alert alert-error"><?= htmlspecialchars($result["headers"]["error"]) ?></div>
+        <?php endif; ?>
+        <?php foreach (($result["headers"]["checks"] ?? []) as $name => $check): ?>
+            <div class="report-line">
+                <span class="tag <?= $check["pass"] ? "tag-pass" : "tag-fail" ?>">
+                    [<?= $check["pass"] ? "PASS" : "FAIL" ?>]
+                </span>
+                <span><strong><?= htmlspecialchars($name) ?>:</strong> <?= htmlspecialchars($check["detail"]) ?></span>
+            </div>
+        <?php endforeach; ?>
     <?php endif; ?>
-</body>
-</html>
+<?php endif; ?>
+
+<?php require_once "includes/footer.php"; ?>

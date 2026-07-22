@@ -19,8 +19,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $user = $result->fetch_assoc();
         $stmt->close();
 
-        // only send an email if the account actually exists, but show the
-        // same message either way - don't reveal whether an email is registered
         if ($user) {
             $token = bin2hex(random_bytes(32));
             $tokenStmt = $conn->prepare(
@@ -44,27 +42,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $message = "If that email is registered, a password reset link has been sent.";
 }
+
+$pageTitle = "Forgot Password";
+require_once "includes/header.php";
 ?>
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>SecCheck - Forgot Password</title>
-</head>
-<body>
-    <h1>Forgot Password</h1>
 
-    <?php if ($message): ?>
-        <p style="color:green;"><?= htmlspecialchars($message) ?></p>
-    <?php else: ?>
-        <form method="POST" action="forgot_password.php">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-            <label for="email">Email:</label><br>
-            <input type="email" id="email" name="email" required><br><br>
-            <button type="submit">Send Reset Link</button>
-        </form>
-    <?php endif; ?>
+<h1>forgot_password</h1>
 
-    <p><a href="login.php">Back to login</a></p>
-</body>
-</html>
+<?php if ($message): ?>
+    <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+<?php else: ?>
+    <form method="POST" action="forgot_password.php">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+        <label for="email">email</label>
+        <input type="email" id="email" name="email" required>
+        <button type="submit">send_reset_link</button>
+    </form>
+<?php endif; ?>
+
+<p style="margin-top:20px; font-size:13px;"><a href="login.php">back to login</a></p>
+
+<?php require_once "includes/footer.php"; ?>

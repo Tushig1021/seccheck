@@ -9,6 +9,7 @@ if (!isset($_SESSION["user_id"])) {
 
 $currentUserId = $_SESSION["user_id"];
 $conn = getDbConnection();
+
 $stmt = $conn->prepare(
     "SELECT id, url, ssl_score, header_score, total_score, created_at
      FROM diagnoses
@@ -18,39 +19,34 @@ $stmt = $conn->prepare(
 $stmt->bind_param("i", $currentUserId);
 $stmt->execute();
 $diagnoses = $stmt->get_result();
+
+$pageTitle = "History";
+require_once "includes/header.php";
 ?>
 
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>SecCheck - History</title>
-</head>
-<body>
-    <h1>Diagnosis History</h1>
-    <p><a href="diagnose.php">Run a new diagnosis</a></p>
+<h1>history</h1>
 
-    <?php if ($diagnoses->num_rows === 0): ?>
-        <p>No diagnoses yet.</p>
-    <?php else: ?>
-        <table border="1" cellpadding="8">
+<?php if ($diagnoses->num_rows === 0): ?>
+    <p style="color: var(--text-dim);">no scans yet — <a href="diagnose.php">run your first one</a></p>
+<?php else: ?>
+    <table>
+        <tr>
+            <th>url</th>
+            <th>ssl</th>
+            <th>headers</th>
+            <th>total</th>
+            <th>date</th>
+        </tr>
+        <?php while ($row = $diagnoses->fetch_assoc()): ?>
             <tr>
-                <th>URL</th>
-                <th>SSL Score</th>
-                <th>Header Score</th>
-                <th>Total Score</th>
-                <th>Date</th>
+                <td><?= htmlspecialchars($row["url"]) ?></td>
+                <td><?= htmlspecialchars($row["ssl_score"]) ?></td>
+                <td><?= htmlspecialchars($row["header_score"]) ?></td>
+                <td><?= htmlspecialchars($row["total_score"]) ?></td>
+                <td style="color: var(--text-dim);"><?= htmlspecialchars($row["created_at"]) ?></td>
             </tr>
-            <?php while ($row = $diagnoses->fetch_assoc()): ?>
-                <tr>
-                    <td><?= htmlspecialchars($row["url"]) ?></td>
-                    <td><?= htmlspecialchars($row["ssl_score"]) ?></td>
-                    <td><?= htmlspecialchars($row["header_score"]) ?></td>
-                    <td><?= htmlspecialchars($row["total_score"]) ?></td>
-                    <td><?= htmlspecialchars($row["created_at"]) ?></td>
-                </tr>
-            <?php endwhile; ?>
-        </table>
-    <?php endif; ?>
-</body>
-</html>
+        <?php endwhile; ?>
+    </table>
+<?php endif; ?>
+
+<?php require_once "includes/footer.php"; ?>

@@ -74,37 +74,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->close();
     }
 }
+
+$pageTitle = "Register";
+require_once "includes/header.php";
 ?>
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>SecCheck - Register</title>
-</head>
-<body>
-    <h1>Create an Account</h1>
-    <?php if ($success): ?>
-        <p style="color:green;">Account created! Please check your email to verify your account before logging in.</p>
-        <p><a href="login.php">Go to login</a></p>
-    <?php else: ?>
-        <?php if ($error): ?>
-            <p style="color:red;"><?= htmlspecialchars($error) ?></p>
-        <?php endif; ?>
-        <form method="POST" action="register.php">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-            <label for="username">Username:</label><br>
-            <input type="text" id="username" name="username"
-                   value="<?= htmlspecialchars($_POST["username"] ?? "") ?>" required><br><br>
-            <label for="email">Email:</label><br>
-            <input type="email" id="email" name="email"
-                   value="<?= htmlspecialchars($_POST["email"] ?? "") ?>" required><br><br>
-            <label for="password">Password:</label><br>
-            <input type="password" id="password" name="password" required><br><br>
-            <label for="confirm_password">Confirm Password:</label><br>
-            <input type="password" id="confirm_password" name="confirm_password" required><br><br>
-            <button type="submit">Register</button>
-        </form>
-        <p>Already have an account? <a href="login.php">Log in</a></p>
+
+<h1>register</h1>
+
+<?php if ($success): ?>
+    <div class="alert alert-success">Account created. Check your email to verify before logging in.</div>
+    <p><a href="login.php">go to login</a></p>
+<?php else: ?>
+    <?php if ($error): ?>
+        <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
-</body>
-</html>
+
+    <form method="POST" action="register.php">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+
+        <label for="username">username</label>
+        <input type="text" id="username" name="username"
+               value="<?= htmlspecialchars($_POST["username"] ?? "") ?>" required>
+
+        <label for="email">email</label>
+        <input type="email" id="email" name="email"
+               value="<?= htmlspecialchars($_POST["email"] ?? "") ?>" required>
+
+        <label for="password">password</label>
+        <input type="password" id="password" name="password" required>
+
+        <label for="confirm_password">confirm_password</label>
+        <input type="password" id="confirm_password" name="confirm_password" required>
+
+        <button type="submit">create_account</button>
+    </form>
+
+    <p style="margin-top:20px; font-size:13px;">
+        already have an account? <a href="login.php">login</a>
+    </p>
+<?php endif; ?>
+
+<?php require_once "includes/footer.php"; ?>

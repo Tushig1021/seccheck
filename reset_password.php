@@ -8,7 +8,6 @@ $error = "";
 $success = false;
 $token = $_GET["token"] ?? $_POST["token"] ?? "";
 
-// look up the token and validate it before showing the form
 $tokenRow = null;
 if ($token !== "") {
     $stmt = $conn->prepare(
@@ -48,7 +47,6 @@ if (!$tokenRow) {
         $updateStmt->execute();
         $updateStmt->close();
 
-        // mark the token used so it can't be replayed
         $usedStmt = $conn->prepare("UPDATE password_resets SET used = 1 WHERE token = ?");
         $usedStmt->bind_param("s", $token);
         $usedStmt->execute();
@@ -57,34 +55,31 @@ if (!$tokenRow) {
         $success = true;
     }
 }
-?>
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>SecCheck - Reset Password</title>
-</head>
-<body>
-    <h1>Reset Password</h1>
 
-    <?php if ($success): ?>
-        <p style="color:green;">Your password has been reset. You can now log in.</p>
-        <p><a href="login.php">Go to login</a></p>
-    <?php elseif ($error && !$tokenValid): ?>
-        <p style="color:red;"><?= htmlspecialchars($error) ?></p>
-    <?php else: ?>
-        <?php if ($error): ?>
-            <p style="color:red;"><?= htmlspecialchars($error) ?></p>
-        <?php endif; ?>
-        <form method="POST" action="reset_password.php">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
-            <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
-            <label for="password">New Password:</label><br>
-            <input type="password" id="password" name="password" required><br><br>
-            <label for="confirm_password">Confirm New Password:</label><br>
-            <input type="password" id="confirm_password" name="confirm_password" required><br><br>
-            <button type="submit">Reset Password</button>
-        </form>
+$pageTitle = "Reset Password";
+require_once "includes/header.php";
+?>
+
+<h1>reset_password</h1>
+
+<?php if ($success): ?>
+    <div class="alert alert-success">Your password has been reset. You can now log in.</div>
+    <p><a href="login.php">go to login</a></p>
+<?php elseif ($error && !$tokenValid): ?>
+    <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+<?php else: ?>
+    <?php if ($error): ?>
+        <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
-</body>
-</html>
+    <form method="POST" action="reset_password.php">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
+        <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
+        <label for="password">new_password</label>
+        <input type="password" id="password" name="password" required>
+        <label for="confirm_password">confirm_new_password</label>
+        <input type="password" id="confirm_password" name="confirm_password" required>
+        <button type="submit">reset_password</button>
+    </form>
+<?php endif; ?>
+
+<?php require_once "includes/footer.php"; ?>

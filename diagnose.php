@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once "session_init.php";
 require_once "csrf.php";
 require_once "ssl_check.php";
 require_once "header_check.php";

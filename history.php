@@ -1,14 +1,14 @@
 <?php
 require_once "session_init.php";
 require_once "db.php";
-$conn = getDbConnection();
-$currentUserId = $_SESSION["user_id"];
 
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    die("Database connection failed: " . $conn->connect_error);
+if (!isset($_SESSION["user_id"])) {
+    header("Location: login.php");
+    exit;
 }
 
+$currentUserId = $_SESSION["user_id"];
+$conn = getDbConnection();
 $stmt = $conn->prepare(
     "SELECT id, url, ssl_score, header_score, total_score, created_at
      FROM diagnoses

@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once "csrf.php";
 require_once "ssl_check.php";
 require_once "header_check.php";
 require_once "db.php";
@@ -16,9 +17,9 @@ $result = null;
 $submittedUrl = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
+    verifyCsrfToken();
     $submittedUrl = trim($_POST["url"]);
 
-    // basic validation - must look like a real host, not blank/garbage input
     $host = parse_url(
         preg_match("~^https?://~i", $submittedUrl) ? $submittedUrl : "https://" . $submittedUrl,
         PHP_URL_HOST
@@ -34,7 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
         $headerScore = $headerResult["score"] ?? 0;
         $totalScore = round(($sslScore + $headerScore) / 2);
 
-	$result = [
+        $result = [
             "host" => $host,
             "ssl" => $sslResult,
             "headers" => $headerResult,
@@ -46,7 +47,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
         if ($bothFailed) {
             $result["save_error"] = "Host unreachable — not saved to history.";
         } else {
-        // save this diagnosis to the database
         $sslDetailsJson = json_encode($sslResult["checks"] ?? []);
         $headerDetailsJson = json_encode($headerResult["checks"] ?? []);
 
@@ -69,7 +69,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
             $result["save_error"] = "Could not save to database: " . $stmt->error;
         }
         $stmt->close();
-	}
+        }
     }
 }
 ?>
@@ -83,6 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
     <h1>SecCheck</h1>
 
     <form method="POST" action="diagnose.php">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(getCsrfToken()) ?>">
         <label for="url">Website URL:</label>
         <input type="text" id="url" name="url" placeholder="example.com"
                value="<?= htmlspecialchars($submittedUrl) ?>" required>
@@ -103,9 +104,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
             <?php endif; ?>
 
             <h4>SSL/TLS (<?= htmlspecialchars($result["ssl"]["score"] ?? "N/A") ?> / 100)</h4>
-	    <?php if (isset($result["ssl"]["error"])): ?>
-    		<p style="color:red;"><?= htmlspecialchars($result["ssl"]["error"]) ?></p>
-	    <?php endif; ?>
+            <?php if (isset($result["ssl"]["error"])): ?>
+                <p style="color:red;"><?= htmlspecialchars($result["ssl"]["error"]) ?></p>
+            <?php endif; ?>
             <ul>
                 <?php foreach (($result["ssl"]["checks"] ?? []) as $name => $check): ?>
                     <li>
@@ -117,8 +118,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["url"])) {
             </ul>
 
             <h4>HTTP Headers (<?= htmlspecialchars($result["headers"]["score"] ?? "N/A") ?> / 100)</h4>
-	    <?php if (isset($result["headers"]["error"])): ?>
-    		<p style="color:red;"><?= htmlspecialchars($result["headers"]["error"]) ?></p>
+            <?php if (isset($result["headers"]["error"])): ?>
+                <p style="color:red;"><?= htmlspecialchars($result["headers"]["error"]) ?></p>
             <?php endif; ?>
             <ul>
                 <?php foreach (($result["headers"]["checks"] ?? []) as $name => $check): ?>
